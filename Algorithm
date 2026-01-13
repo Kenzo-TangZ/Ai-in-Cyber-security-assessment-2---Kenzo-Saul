@@ -1,0 +1,148 @@
+import pandas as pd
+import numpy as np
+import time
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score
+import matplotlib.pyplot as plt
+
+df = pd.read_csv('Iris.csv')
+X = df.drop(['Id', 'Species'], axis=1)
+y = df['Species']
+
+label_encoder = LabelEncoder()
+y_encoded = label_encoder.fit_transform(y)
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y_encoded, test_size=0.2, random_state=42
+)
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+print("=" * 60)
+print("NAIVE BAYES vs KNN COMPARISON")
+print("=" * 60)
+
+nb = GaussianNB()
+knn = KNeighborsClassifier(n_neighbors=5)
+
+print("\n1. Training both models...")
+nb_start = time.time()
+nb.fit(X_train, y_train)
+nb_train_time = time.time() - nb_start
+
+knn_start = time.time()
+knn.fit(X_train_scaled, y_train)
+knn_train_time = time.time() - knn_start
+
+print("2. Making predictions...")
+nb_pred_start = time.time()
+nb_pred = nb.predict(X_test)
+nb_pred_time = time.time() - nb_pred_start
+
+knn_pred_start = time.time()
+knn_pred = knn.predict(X_test_scaled)
+knn_pred_time = time.time() - knn_pred_start
+
+print("3. Calculating accuracy...")
+nb_acc = accuracy_score(y_test, nb_pred)
+knn_acc = accuracy_score(y_test, knn_pred)
+
+print("\n" + "-" * 60)
+print("RESULTS:")
+print("-" * 60)
+print(f"Naive Bayes:")
+print(f"  Accuracy: {nb_acc:.4f} ({nb_acc*100:.2f}%)")
+print(f"  Train time: {nb_train_time:.4f} seconds")
+print(f"  Predict time: {nb_pred_time:.4f} seconds")
+
+print(f"\nKNN (k=5):")
+print(f"  Accuracy: {knn_acc:.4f} ({knn_acc*100:.2f}%)")
+print(f"  Train time: {knn_train_time:.4f} seconds")
+print(f"  Predict time: {knn_pred_time:.4f} seconds")
+
+print("\n4. Testing with more training data...")
+train_sizes = [0.2, 0.4, 0.6, 0.8, 1.0]
+nb_scores = []
+knn_scores = []
+
+print("\nTraining Size | NB Accuracy | KNN Accuracy")
+print("-" * 40)
+
+for size in train_sizes:
+    n_samples = int(size * len(X_train))
+    
+    X_part = X_train[:n_samples]
+    y_part = y_train[:n_samples]
+    X_part_scaled = X_train_scaled[:n_samples]
+    
+    nb_temp = GaussianNB()
+    nb_temp.fit(X_part, y_part)
+    nb_score = nb_temp.score(X_test, y_test)
+    
+    knn_temp = KNeighborsClassifier(n_neighbors=5)
+    knn_temp.fit(X_part_scaled, y_part)
+    knn_score = knn_temp.score(X_test_scaled, y_test)
+    
+    nb_scores.append(nb_score)
+    knn_scores.append(knn_score)
+    
+    print(f"{size*100:6.0f}%      | {nb_score:11.4f} | {knn_score:12.4f}")
+
+plt.figure(figsize=(10, 4))
+
+plt.subplot(1, 2, 1)
+x_labels = [f"{int(s*100)}%" for s in train_sizes]
+x_pos = range(len(train_sizes))
+plt.plot(x_pos, nb_scores, 'o-', label='Naive Bayes')
+plt.plot(x_pos, knn_scores, 's-', label='KNN')
+plt.xticks(x_pos, x_labels)
+plt.xlabel('Training Data Size')
+plt.ylabel('Accuracy')
+plt.title('Learning with More Data')
+plt.legend()
+plt.grid(True, alpha=0.3)
+
+plt.subplot(1, 2, 2)
+labels = ['Naive Bayes', 'KNN']
+train_times = [nb_train_time, knn_train_time]
+pred_times = [nb_pred_time, knn_pred_time]
+x = range(2)
+plt.bar(x, train_times, width=0.4, label='Train Time', color='lightblue')
+plt.bar([i + 0.4 for i in x], pred_times, width=0.4, label='Predict Time', color='lightgreen')
+plt.xticks([i + 0.2 for i in x], labels)
+plt.ylabel('Time (seconds)')
+plt.title('Speed Comparison')
+plt.legend()
+
+plt.tight_layout()
+plt.show()
+
+print("\n" + "=" * 60)
+print("QUICK SUMMARY")
+print("=" * 60)
+
+if nb_acc > knn_acc:
+    print("✓ Naive Bayes is more accurate")
+elif knn_acc > nb_acc:
+    print("✓ KNN is more accurate")
+else:
+    print("✓ Both have same accuracy")
+
+if nb_train_time + nb_pred_time < knn_train_time + knn_pred_time:
+    print("✓ Naive Bayes is faster")
+else:
+    print("✓ KNN is faster")
+
+if nb_scores[0] > knn_scores[0]:
+    print("✓ Naive Bayes works better with less data")
+else:
+    print("✓ KNN works better with less data")
+
+print("\n" + "=" * 60)
+print("DONE")
+print("=" * 60)
